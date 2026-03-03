@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+.arabic {
+    font-family: "Amiri Quran", serif;
+    font-size: 1.6rem;
+    line-height: 2.8rem;
+    direction: rtl;
+}
+
+.arabic-text {
+    line-height: 2.4;
+    /* jarak atas bawah antar huruf */
+    letter-spacing: 0.02em;
+    /* dikit aja, jangan kebanyakan */
+    word-spacing: 0.15em;
+    /* jarak antar kata Arab */
+}
