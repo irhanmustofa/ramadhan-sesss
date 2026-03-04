@@ -6,6 +6,9 @@ import SurahList from "../pages/Quran/SurahList";
 import SurahDetail from "../pages/Quran/SurahDetail";
 import QuranHome from "../pages/Quran/QuranHome";
 import MainLayout from "../components/layouts/MainLayout";
+import AsmaulHusna from "../pages/AsmaulHusna/AsmaulHusna";
+import Doa from "../pages/Doa/Doa";
+import DzikirCounter from "../pages/Dzikir/DzikirCounter";
 
 export default function AppRoutes() {
   const isLoggedIn = !!localStorage.getItem("auth");
@@ -17,10 +20,14 @@ export default function AppRoutes() {
           path="/login"
           element={isLoggedIn ? <Navigate to="/" /> : <Login />}
         />
-        <Route element={isLoggedIn ? <MainLayout /> : <Navigate to="/login" />}>
+        <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/quran" element={<QuranHome />} />
           <Route path="/quran/surah/:number" element={<SurahDetail />} />
+          <Route path="/asmaul-husna" element={<AsmaulHusna />} />
+          <Route path="/asmaul-husna" element={<AsmaulHusna />} />
+          <Route path="/doa" element={<Doa />} />
+          <Route path="/dzikir" element={<DzikirCounter />} />
           {/* <Route path="/profile" element={<Profile />} /> */}
         </Route>
       </Routes>

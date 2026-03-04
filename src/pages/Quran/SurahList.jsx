@@ -35,7 +35,7 @@ export default function SurahList() {
   return (
     <div className="space-y-4">
       {/* SEARCH BAR */}
-      <div className="sticky top-0 z-10 bg-slate-950 pb-2">
+      <div className="sticky top-0 z-10 bg-gray-950 pb-2">
         <input
           type="text"
           placeholder="Cari surah… (Al-Fatihah / الفاتحة)"
@@ -43,7 +43,7 @@ export default function SurahList() {
           onChange={(e) => setQuery(e.target.value)}
           className="
             w-full px-4 py-3 rounded-xl
-            bg-zinc-900 text-white
+            bg-gray-900 text-white
             placeholder:text-zinc-500
             outline-none
             focus:ring-2 focus:ring-[#6D1E3A]
@@ -67,7 +67,7 @@ export default function SurahList() {
             className="
         flex justify-between items-center
         p-4 rounded-xl
-        bg-zinc-900 hover:bg-zinc-800
+        bg-gray-900 hover:bg-gray-800
         transition
       "
           >

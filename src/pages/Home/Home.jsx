@@ -1,88 +1,180 @@
+import { useState } from "react";
+import { FaMosque, FaLocationArrow, FaFingerprint } from "react-icons/fa";
 import BottomNav from "../../components/ui/BottomNav";
 import PrayerTimes from "./elements/PrayerTimes";
-
+import {
+  FaStar,
+  FaHandsPraying,
+  FaBookQuran,
+  FaArrowsLeftRightToLine,
+} from "react-icons/fa6";
+import { Link } from "react-router";
+import HomeHeader from "./elements/HomeHeader";
 export default function Home() {
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleFindNearbyMosque = () => {
+    setIsLocating(true);
+
+    // Cek dukungan browser
+    if (!navigator.geolocation) {
+      alert("Browser Anda tidak mendukung fitur lokasi.");
+      setIsLocating(false);
+      return;
+    }
+
+    // Request lokasi user
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        // Buka Google Maps dengan koordinat user + pencarian masjid
+        const mapsUrl = `https://www.google.com/maps/search/mosque/@${latitude},${longitude},15z`;
+
+        // Buka di tab baru
+        window.open(mapsUrl, "_blank");
+
+        setIsLocating(false);
+      },
+      (error) => {
+        console.error("❌ Error getting location:", error);
+
+        // Fallback: buka maps tanpa koordinat spesifik
+        const fallbackUrl =
+          "https://www.google.com/maps/search/masjid+terdekat";
+        window.open(fallbackUrl, "_blank");
+
+        setIsLocating(false);
+
+        // Tampilkan pesan jika izin ditolak
+        if (error.code === error.PERMISSION_DENIED) {
+          alert(
+            "Izin lokasi ditolak. Silakan izinkan akses lokasi untuk mencari masjid terdekat.",
+          );
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
+  };
+
   return (
     <div className="px-4 pt-6 pb-24 space-y-6 max-w-2xl mx-auto">
       {/* HEADER */}
-      <header className="space-y-1">
-        <p className="text-xs text-pink-500 tracking-wide">SELAMAT PAGI</p>
-        <h1 className="text-2xl font-semibold">irhan</h1>
-
-        <div className="flex gap-2 text-xs mt-2">
-          <span className="px-2 py-1 rounded-full bg-white/5">Lv 1</span>
-          <span className="px-2 py-1 rounded-full bg-white/5">🔥 0</span>
-          <span className="px-2 py-1 rounded-full bg-[#6D1E3A]/20 text-[#F472B6]">
-            CIBITUNG
-          </span>
-        </div>
-      </header>
+      <HomeHeader />
 
       {/* PROMO CARD */}
       <div className="rounded-2xl p-4 bg-gradient-to-br from-[#6D1E3A] to-[#0f172a]">
-        <p className="text-xs text-yellow-400 font-medium">
-          🏆 MA’AR IMPACT INNOVATION PRIZE 2026
+        <p className="text-xs text-[#F472B6] font-medium">
+          Menata Hati, Menguatkan Iman
         </p>
-        <h2 className="font-semibold mt-1">Nawaetu Masuk Shortlist! 🏆</h2>
+        <h2 className="font-semibold mt-1">RAMADHAN SESSS</h2>
         <p className="text-xs text-white/70 mt-1">
-          Bantu kami menang dengan memberikan vote GRATIS Anda!
+          Satu aplikasi, banyak kebaikan. Atur waktu ibadah, baca ayat, dan
+          renungkan makna Ramadhan dengan cara yang simpel dan nyaman.
         </p>
 
-        <button className="mt-3 bg-yellow-400 text-black font-medium px-4 py-2 rounded-full text-sm">
+        {/* <button className="mt-3 bg-yellow-400 text-black font-medium px-4 py-2 rounded-full text-sm hover:bg-yellow-300 transition">
           ⭐ Vote Sekarang di GlobalSadaqah
-        </button>
+        </button> */}
       </div>
 
       {/* NIAT HARIAN */}
-      <div className="rounded-2xl p-4 bg-white/5 ring-1 ring-white/10">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-xs text-slate-400">JURNAL NIAT HARIAN</p>
-            <h3 className="font-medium mt-1">Luruskan Niat Hari Ini</h3>
-            <p className="text-xs text-slate-400 mt-1 italic">
-              “Amalan itu tergantung niatnya…”
+
+      <div className="grid lg:grid-cols-4 grid-cols-2 gap-3">
+        {/* ASMAUL HUSNA */}
+        <Link
+          to="/asmaul-husna"
+          className="group relative overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 hover:ring-[#F472B6]/50 transition-all duration-300 hover:scale-[1.02]"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-[#F472B6]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:bg-[#F472B6]/20 transition-colors">
+              <FaStar className="text-[#F472B6] text-lg" />
+            </div>
+            <h3 className="font-semibold text-white text-sm">Asmaul Husna</h3>
+            <p className="text-[10px] text-slate-400 mt-1">99 Nama Allah</p>
+          </div>
+        </Link>
+
+        {/* DOA-DOA PILIHAN */}
+        <Link
+          to="/doa"
+          className="group relative overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 hover:ring-[#F472B6]/50 transition-all duration-300 hover:scale-[1.02]"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-[#F472B6]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:bg-[#F472B6]/20 transition-colors">
+              <FaHandsPraying className="text-[#F472B6] text-lg" />
+            </div>
+            <h3 className="font-semibold text-white text-sm">Doa Pilihan</h3>
+            <p className="text-[10px] text-slate-400 mt-1">Doa sehari-hari</p>
+          </div>
+        </Link>
+
+        {/* DZIKIR */}
+        <Link
+          to="/dzikir"
+          className="group relative overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 hover:ring-[#F472B6]/50 transition-all duration-300 hover:scale-[1.02]"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-[#F472B6]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:bg-[#F472B6]/20 transition-colors">
+              <FaFingerprint className="text-[#F472B6] text-lg" />
+            </div>
+            <h3 className="font-semibold text-white text-sm">Dzikir</h3>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Hitung & baca dzikir
             </p>
           </div>
-          <button className="bg-[#6D1E3A] px-3 py-1.5 rounded-full text-xs">
-            Mulai Niatkan
-          </button>
-        </div>
-      </div>
+        </Link>
 
-      {/* NEXT PRAYER */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl p-4 bg-white/5 ring-1 ring-white/10">
-          <p className="text-xs text-slate-400">SELANJUTNYA</p>
-          <p className="text-2xl font-mono mt-1">02:24:44</p>
-          <p className="text-xs text-slate-400 mt-1">Dzuhur 12:07</p>
-        </div>
-
-        <div className="rounded-2xl p-4 bg-white/5 ring-1 ring-white/10 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#6D1E3A]/30 flex items-center justify-center">
-            📖
+        {/* SIRAH NABAWIYAH */}
+        <Link
+          to="/sirah"
+          className="group relative overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 hover:ring-[#F472B6]/50 transition-all duration-300 hover:scale-[1.02]"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-[#F472B6]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:bg-[#F472B6]/20 transition-colors">
+              <FaBookQuran className="text-[#F472B6] text-lg" />
+            </div>
+            <h3 className="font-semibold text-white text-sm">Sirah Nabi</h3>
+            <p className="text-[10px] text-slate-400 mt-1">Kisah Rasulullah</p>
           </div>
-          <div>
-            <p className="text-sm font-medium">Mulai Tilawah</p>
-            <p className="text-xs text-slate-400">Baca Al-Qur’an hari ini</p>
-          </div>
-        </div>
+        </Link>
       </div>
 
       {/* JADWAL SHOLAT */}
       <div className="rounded-2xl p-4 bg-white/5 ring-1 ring-white/10">
-        <div className="flex justify-between mb-3">
+        <div className="flex justify-between items-center mb-3">
           <h3 className="font-medium">Jadwal Sholat Hari Ini</h3>
-          <div className="flex gap-2 text-xs">
-            <span className="px-2 py-1 rounded-full bg-white/5">🧭 Kiblat</span>
-            <span className="px-2 py-1 rounded-full bg-white/5">
-              📍 Cari Masjid
-            </span>
-          </div>
+
+          {/* Tombol Cari Masjid Terdekat */}
+          <button
+            onClick={handleFindNearbyMosque}
+            disabled={isLocating}
+            className="text-xs text-slate-200 flex items-center gap-1.5 bg-[#6D1E3A] hover:bg-[#8b254a] px-3 py-1.5 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLocating ? (
+              <>
+                <div className="w-3 h-3 border-2 border-slate-200 border-t-transparent rounded-full animate-spin" />
+                <span className="hidden sm:inline">Lokasi...</span>
+              </>
+            ) : (
+              <>
+                <FaMosque />
+                <span className="">Cari Masjid</span>
+              </>
+            )}
+          </button>
         </div>
 
         <PrayerTimes />
       </div>
-      <BottomNav />
     </div>
   );
 }
