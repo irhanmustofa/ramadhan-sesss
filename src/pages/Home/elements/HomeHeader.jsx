@@ -38,11 +38,11 @@ export default function HomeHeader() {
       const saved = localStorage.getItem("prayer_location");
 
       if (saved) {
-        const { latitude, longitude } = JSON.parse(saved);
-        if (latitude && longitude) {
-          const cityName = await getCityNameFromCoords(latitude, longitude);
+        const { latitude, longitude, kota } = JSON.parse(saved);
+        if (kota) {
+          const cityName = kota.toUpperCase();
           if (cityName) {
-            setLocation(cityName.toUpperCase());
+            setLocation(cityName);
             return;
           }
         }
@@ -84,6 +84,7 @@ export default function HomeHeader() {
   const handleLogout = () => {
     localStorage.removeItem("auth");
     setUser(null);
+    window.location.reload();
   };
 
   return (

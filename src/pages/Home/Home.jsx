@@ -1,66 +1,11 @@
 import { useState } from "react";
-import { FaMosque, FaLocationArrow, FaFingerprint } from "react-icons/fa";
-import BottomNav from "../../components/ui/BottomNav";
+import { FaMosque, FaFingerprint } from "react-icons/fa";
 import PrayerTimes from "./elements/PrayerTimes";
-import {
-  FaStar,
-  FaHandsPraying,
-  FaBookQuran,
-  FaArrowsLeftRightToLine,
-} from "react-icons/fa6";
+import { FaStar, FaHandsPraying, FaBookQuran } from "react-icons/fa6";
 import { Link } from "react-router";
 import HomeHeader from "./elements/HomeHeader";
+import FindLocation from "../../components/FindLocation";
 export default function Home() {
-  const [isLocating, setIsLocating] = useState(false);
-
-  const handleFindNearbyMosque = () => {
-    setIsLocating(true);
-
-    // Cek dukungan browser
-    if (!navigator.geolocation) {
-      alert("Browser Anda tidak mendukung fitur lokasi.");
-      setIsLocating(false);
-      return;
-    }
-
-    // Request lokasi user
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-
-        // Buka Google Maps dengan koordinat user + pencarian masjid
-        const mapsUrl = `https://www.google.com/maps/search/mosque/@${latitude},${longitude},15z`;
-
-        // Buka di tab baru
-        window.open(mapsUrl, "_blank");
-
-        setIsLocating(false);
-      },
-      (error) => {
-        console.error("❌ Error getting location:", error);
-
-        // Fallback: buka maps tanpa koordinat spesifik
-        const fallbackUrl =
-          "https://www.google.com/maps/search/masjid+terdekat";
-        window.open(fallbackUrl, "_blank");
-
-        setIsLocating(false);
-
-        // Tampilkan pesan jika izin ditolak
-        if (error.code === error.PERMISSION_DENIED) {
-          alert(
-            "Izin lokasi ditolak. Silakan izinkan akses lokasi untuk mencari masjid terdekat.",
-          );
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    );
-  };
-
   return (
     <div className="px-4 pt-6 pb-24 space-y-6 max-w-2xl mx-auto">
       {/* HEADER */}
@@ -76,13 +21,7 @@ export default function Home() {
           Satu aplikasi, banyak kebaikan. Atur waktu ibadah, baca ayat, dan
           renungkan makna Ramadhan dengan cara yang simpel dan nyaman.
         </p>
-
-        {/* <button className="mt-3 bg-yellow-400 text-black font-medium px-4 py-2 rounded-full text-sm hover:bg-yellow-300 transition">
-          ⭐ Vote Sekarang di GlobalSadaqah
-        </button> */}
       </div>
-
-      {/* NIAT HARIAN */}
 
       <div className="grid lg:grid-cols-4 grid-cols-2 gap-3">
         {/* ASMAUL HUSNA */}
@@ -134,7 +73,7 @@ export default function Home() {
 
         {/* SIRAH NABAWIYAH */}
         <Link
-          to="/sirah"
+          to="/sirah-nabi"
           className="group relative overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 hover:ring-[#F472B6]/50 transition-all duration-300 hover:scale-[1.02]"
         >
           <div className="absolute top-0 right-0 w-16 h-16 bg-[#F472B6]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
@@ -154,23 +93,7 @@ export default function Home() {
           <h3 className="font-medium">Jadwal Sholat Hari Ini</h3>
 
           {/* Tombol Cari Masjid Terdekat */}
-          <button
-            onClick={handleFindNearbyMosque}
-            disabled={isLocating}
-            className="text-xs text-slate-200 flex items-center gap-1.5 bg-[#6D1E3A] hover:bg-[#8b254a] px-3 py-1.5 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLocating ? (
-              <>
-                <div className="w-3 h-3 border-2 border-slate-200 border-t-transparent rounded-full animate-spin" />
-                <span className="hidden sm:inline">Lokasi...</span>
-              </>
-            ) : (
-              <>
-                <FaMosque />
-                <span className="">Cari Masjid</span>
-              </>
-            )}
-          </button>
+          <FindLocation />
         </div>
 
         <PrayerTimes />

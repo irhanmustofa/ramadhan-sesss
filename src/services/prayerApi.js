@@ -101,9 +101,9 @@ export async function getPrayerTimes(cityId, date = new Date()) {
         const data = await res.json();
         console.log(`📅 Jadwal untuk ${cityId} pada ${formattedDate}:`, data)
 
-        return data.data || []  // ✅ FIX: Sesuaikan dengan API MyQuran
+        return data.data || null  // ✅ FIX: Return null jika tidak ada data
     } catch (error) {
         console.error("❌ Get prayer times error:", error);
-        return [];
+        return null;
     }
 }

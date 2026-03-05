@@ -1,0 +1,10 @@
+/* src/styles/pdf-viewer-dark.css */
+.rpv-core__viewer {
+    background-color: #0f172a !important;
+}
+
+.rpv-core__inner-page {
+    background-color: #1e293b !important;
+}
+
+/* ... tambahkan style lainnya */

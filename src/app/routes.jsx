@@ -9,6 +9,9 @@ import MainLayout from "../components/layouts/MainLayout";
 import AsmaulHusna from "../pages/AsmaulHusna/AsmaulHusna";
 import Doa from "../pages/Doa/Doa";
 import DzikirCounter from "../pages/Dzikir/DzikirCounter";
+import SirahNabi from "../pages/Doa/SirahNabi";
+import RamadhanHome from "../pages/Ramadhan/RamadhanHome";
+import Setting from "../pages/Setting/Setting";
 
 export default function AppRoutes() {
   const isLoggedIn = !!localStorage.getItem("auth");
@@ -28,6 +31,9 @@ export default function AppRoutes() {
           <Route path="/asmaul-husna" element={<AsmaulHusna />} />
           <Route path="/doa" element={<Doa />} />
           <Route path="/dzikir" element={<DzikirCounter />} />
+          <Route path="/sirah-nabi" element={<SirahNabi />} />
+          <Route path="/dashboard" element={<RamadhanHome />} />
+          <Route path="/settings" element={<Setting />} />
           {/* <Route path="/profile" element={<Profile />} /> */}
         </Route>
       </Routes>

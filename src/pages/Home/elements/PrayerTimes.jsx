@@ -1,25 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   getCityNameFromCoords,
   getPrayerTimes,
   searchCityInMyQuran,
 } from "../../../services/prayerApi";
-import { FaArrowLeft, FaBookOpen, FaMapMarkerAlt } from "react-icons/fa";
+import {
+  FaArrowLeft,
+  FaBookOpen,
+  FaMapMarkerAlt,
+  FaSpinner,
+  FaSearch,
+  FaTimes,
+} from "react-icons/fa";
 import { Link } from "react-router";
 
 /* ======================
    Helper
 ====================== */
-const getTodayDate = () => {
-  const date = new Date();
-  return date.toLocaleDateString("id-ID", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-};
-
 const parseTimeToDate = (time) => {
   const [h, m] = time.split(":").map(Number);
   const d = new Date();
@@ -31,13 +28,16 @@ export default function PrayerTimes() {
   const [times, setTimes] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [cityOptions, setCityOptions] = useState([]);
   const [selectedCityId, setSelectedCityId] = useState("");
   const [selectedCityName, setSelectedCityName] = useState("");
-  const [showManualSelect, setShowManualSelect] = useState(false);
-
   const [now, setNow] = useState(new Date());
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredCities, setFilteredCities] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   /* ======================
      CLOCK TICK
@@ -48,7 +48,57 @@ export default function PrayerTimes() {
   }, []);
 
   /* ======================
-     INIT AUTO DETECT
+     HELPER: Fetch All Cities
+  ====================== */
+  const fetchAllCities = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "https://api.myquran.com/v2/sholat/kota/semua",
+      );
+      const data = await response.json();
+      if (data?.data) {
+        setCityOptions(data.data);
+        setFilteredCities(data.data); // Initial filtered = all
+        return data.data;
+      }
+    } catch (err) {
+      console.error("Failed to fetch cities:", err);
+    }
+    return [];
+  }, []);
+
+  /* ======================
+     SEARCH FUNCTIONALITY
+  ====================== */
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      // If search is too short, show all cities
+      setFilteredCities(cityOptions);
+      setShowSearchResults(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    // Debounce search
+    const timer = setTimeout(() => {
+      const query = searchQuery.toLowerCase();
+      const filtered = cityOptions.filter(
+        (city) =>
+          city.lokasi.toLowerCase().includes(query) ||
+          (city.daerah && city.daerah.toLowerCase().includes(query)),
+      );
+
+      setFilteredCities(filtered);
+      setShowSearchResults(true);
+      setIsSearching(false);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, cityOptions]);
+
+  /* ======================
+     INIT: Load from localStorage
   ====================== */
   useEffect(() => {
     const init = async () => {
@@ -56,6 +106,32 @@ export default function PrayerTimes() {
         setLoading(true);
 
         const saved = localStorage.getItem("prayer_location");
+
+        if (saved) {
+          const savedData = JSON.parse(saved);
+
+          if (savedData?.cityId && savedData?.kota) {
+            console.log("✅ Loading from localStorage:", savedData);
+
+            const prayerData = await getPrayerTimes(
+              savedData.cityId,
+              new Date(),
+            );
+
+            if (prayerData?.jadwal) {
+              setTimes(prayerData);
+              setSelectedCityId(String(savedData.cityId));
+              setSelectedCityName(savedData.kota);
+
+              await fetchAllCities();
+
+              setLoading(false);
+              return;
+            }
+          }
+        }
+
+        // Fallback: Auto-detect GPS
         if (!saved) throw new Error("LOCATION_NOT_SAVED");
 
         const { latitude, longitude } = JSON.parse(saved);
@@ -69,14 +145,15 @@ export default function PrayerTimes() {
 
         const cityId = cityList[0].id;
         const kota = cityList[0].lokasi;
-
         const prayerData = await getPrayerTimes(cityId, new Date());
+
         if (!prayerData?.jadwal) throw new Error("PRAYER_TIMES_NOT_FOUND");
 
         setTimes(prayerData);
-        setSelectedCityId(cityId.toString());
+        setSelectedCityId(String(cityId));
         setSelectedCityName(kota);
         setCityOptions(cityList);
+        setFilteredCities(cityList);
 
         localStorage.setItem(
           "prayer_location",
@@ -89,38 +166,31 @@ export default function PrayerTimes() {
           }),
         );
       } catch (err) {
-        let message = "Gagal memuat jadwal sholat.";
-        if (err.message === "LOCATION_NOT_SAVED")
-          message = "Lokasi belum disimpan. Silakan pilih kota manual.";
-        if (err.message === "CITY_NAME_NOT_FOUND")
-          message = "Nama kota tidak ditemukan. Pilih manual.";
-        if (err.message === "CITY_NOT_IN_DATABASE")
-          message = "Kota tidak tersedia di database.";
+        console.error("❌ Init error:", err);
+        setError("Gagal memuat jadwal. Silakan pilih kota manual.");
 
-        setError(message);
-        setShowManualSelect(true);
+        await fetchAllCities();
       } finally {
         setLoading(false);
       }
     };
 
     init();
-  }, []);
+  }, [fetchAllCities]);
 
   /* ======================
-     CHANGE CITY (KEEP!)
+     HANDLE CITY SELECT
   ====================== */
-  const handleCityChange = async (e) => {
-    const cityId = e.target.value;
-    if (!cityId) return;
-
+  const handleCitySelect = async (city) => {
     setLoading(true);
-    try {
-      const prayerData = await getPrayerTimes(cityId, new Date());
-      setTimes(prayerData);
-      setSelectedCityId(cityId);
-      setSelectedCityName(prayerData.lokasi);
+    setShowSearchResults(false);
+    setSearchQuery("");
 
+    try {
+      const prayerData = await getPrayerTimes(city.id, new Date());
+      if (!prayerData?.jadwal) throw new Error("Invalid data");
+
+      // Update localStorage
       const saved = localStorage.getItem("prayer_location");
       const coords = saved ? JSON.parse(saved) : {};
 
@@ -128,25 +198,131 @@ export default function PrayerTimes() {
         "prayer_location",
         JSON.stringify({
           ...coords,
-          cityId,
-          kota: prayerData.lokasi,
+          cityId: String(city.id),
+          kota: city.lokasi,
           lastUpdated: new Date().toISOString(),
         }),
       );
-    } finally {
+
+      console.log("✅ City changed to:", city.lokasi);
+
+      // Auto reload after 100ms
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    } catch (err) {
+      console.error("Failed to change city:", err);
+      setError("Gagal memuat jadwal kota.");
       setLoading(false);
     }
   };
 
-  const handleResetLocation = () => {
-    localStorage.removeItem("prayer_location");
-    setTimes(null);
-    setCityOptions([]);
-    setSelectedCityId("");
-    setSelectedCityName("");
-    setShowManualSelect(true);
+  const handleResetLocation = useCallback(async () => {
+    setLoading(true);
     setError(null);
-  };
+
+    try {
+      // ✅ STEP 1: Detect GPS location
+      if (!navigator.geolocation) {
+        throw new Error("Geolocation tidak didukung browser ini");
+      }
+
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      console.log("📍 GPS detected:", { latitude, longitude });
+
+      // ✅ STEP 2: Get city name from coords
+      const cityName = await getCityNameFromCoords(latitude, longitude);
+      if (!cityName) {
+        throw new Error("Gagal mendapatkan nama kota dari koordinat");
+      }
+      console.log("🏙️ City name:", cityName);
+
+      // ✅ STEP 3: Search city in MyQuran database
+      const cityList = await searchCityInMyQuran(cityName);
+      if (!cityList?.length) {
+        throw new Error(`Kota "${cityName}" tidak ditemukan di database`);
+      }
+
+      // Ambil kota pertama yang cocok
+      const selectedCity = cityList[0];
+      const cityId = selectedCity.id;
+      const kota = selectedCity.lokasi;
+      console.log("✅ City matched:", { cityId, kota });
+
+      // ✅ STEP 4: Fetch prayer times for detected city
+      const prayerData = await getPrayerTimes(cityId, new Date());
+      if (!prayerData?.jadwal) {
+        throw new Error("Gagal memuat jadwal sholat");
+      }
+
+      // ✅ STEP 5: Update state
+      setTimes(prayerData);
+      setSelectedCityId(String(cityId));
+      setSelectedCityName(kota);
+
+      // ✅ STEP 6: Update localStorage dengan data baru
+      localStorage.setItem(
+        "prayer_location",
+        JSON.stringify({
+          latitude,
+          longitude,
+          cityId: String(cityId),
+          kota,
+          lastUpdated: new Date().toISOString(),
+        }),
+      );
+      console.log("💾 localStorage updated:", { cityId, kota });
+
+      // ✅ STEP 7: Reload halaman agar data fresh
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    } catch (err) {
+      console.error("❌ Reset location failed:", err);
+      setError(
+        err.message ||
+          "Gagal mendeteksi lokasi. Pastikan GPS aktif dan izin lokasi diberikan.",
+      );
+      setLoading(false);
+
+      // Optional: Fallback ke Jakarta jika gagal
+      setDefaultCity();
+    }
+  }, []);
+
+  const setDefaultCity = useCallback(async () => {
+    try {
+      const cityId = localStorage.getItem("prayer_location");
+      console.log("👀 Fallback to default:", cityId);
+      const prayerData = await getPrayerTimes("1203", new Date()); // Jakarta
+      if (prayerData?.jadwal) {
+        setTimes(prayerData);
+        setSelectedCityId("1203");
+        setSelectedCityName("JAKARTA PUSAT");
+
+        localStorage.setItem(
+          "prayer_location",
+          JSON.stringify({
+            latitude: -6.1754,
+            longitude: 106.8272,
+            cityId: "1203",
+            kota: "JAKARTA PUSAT",
+            lastUpdated: new Date().toISOString(),
+          }),
+        );
+      }
+    } catch (e) {
+      console.error("Fallback failed:", e);
+    }
+  }, []);
 
   /* ======================
      PRAYER DATA
@@ -169,7 +345,6 @@ export default function PrayerTimes() {
         return { name, time };
       }
     }
-    // lewat Isya → Subuh besok
     if (prayers.length) {
       const d = parseTimeToDate(prayers[1][1]);
       d.setDate(d.getDate() + 1);
@@ -199,15 +374,21 @@ export default function PrayerTimes() {
   if (loading && !times) {
     return (
       <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 text-center">
-        <p className="text-zinc-400 text-sm">Memuat jadwal sholat...</p>
+        <div className="flex flex-col items-center gap-2">
+          <FaSpinner className="animate-spin text-[#F472B6]" size={20} />
+          <p className="text-zinc-400 text-sm">Memuat jadwal sholat...</p>
+        </div>
       </div>
     );
   }
 
-  if (error || showManualSelect) {
+  if (error) {
     return (
       <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-        <p className="text-amber-300 text-sm">{error}</p>
+        <p className="text-amber-300 text-sm mb-3">⚠️ {error}</p>
+        <Link to="/settings" className="text-xs text-[#F472B6] hover:underline">
+          Buka Pengaturan →
+        </Link>
       </div>
     );
   }
@@ -226,8 +407,7 @@ export default function PrayerTimes() {
           </p>
         </div>
 
-        <div className="group relative flex overflow-hidden rounded-2xl p-5 hover:ring-[#6D1E3A]/50 transition-all duration-300  bg-white/5 ring-1 ring-white/10">
-          {/* Background Pattern/Overlay */}
+        <div className="group relative flex overflow-hidden rounded-2xl p-5 hover:ring-[#6D1E3A]/50 transition-all duration-300 bg-white/5 ring-1 ring-white/10">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#F472B6]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
           <Link
@@ -235,18 +415,13 @@ export default function PrayerTimes() {
             className="group relative p-4 rounded-2xl bg-gradient-to-br from-[#6D1E3A]/80 to-[#0f172a] ring-1 ring-white/10 hover:ring-[#F472B6]/50 transition-all duration-300 lg:w-full"
           >
             <div className="flex items-center gap-3">
-              {/* Icon */}
               <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-[#F472B6]/20 transition-colors">
                 <FaBookOpen className="text-2xl text-[#F472B6]" />
               </div>
-
-              {/* Text - Lebih ringkas untuk mobile */}
               <div className="flex-1">
                 <h3 className="text-sm font-bold text-white">Tadarus</h3>
                 <p className="text-xs text-slate-300">Baca Al-Qur'an</p>
               </div>
-
-              {/* Chevron */}
               <div className="text-slate-500">
                 <svg
                   width="16"
@@ -266,71 +441,149 @@ export default function PrayerTimes() {
 
       {/* MAIN CARD */}
       <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-        <div className="flex justify-between mb-3">
-          <div className="">
+        <div className="flex justify-between items-start mb-3">
+          <div>
             <h3 className="font-semibold text-white">Jadwal Sholat</h3>
-            <div className="text-xs text-zinc-400 flex flex-row">
-              <FaMapMarkerAlt /> {selectedCityName} • {times?.jadwal?.tanggal}
+            <div className="text-xs text-zinc-400 flex items-center gap-1 mt-0.5">
+              <FaMapMarkerAlt className="text-[#F472B6]" size={10} />
+              <span>{selectedCityName}</span>
+              <span>•</span>
+              <span>{times?.jadwal?.tanggal}</span>
             </div>
           </div>
           <button
             onClick={handleResetLocation}
-            className="text-xs text-zinc-500 hover:text-white"
+            className="text-xs text-zinc-500 hover:text-white p-1"
+            title="Reset lokasi"
           >
             ✕
           </button>
         </div>
 
-        {/* DROPDOWN TETAP ADA */}
-        {cityOptions.length > 1 && (
-          <select
-            value={selectedCityId}
-            onChange={handleCityChange}
-            className="w-full mb-5 px-3 py-3 rounded-lg bg-slate-800 text-xs"
-          >
-            {cityOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.lokasi}
-              </option>
-            ))}
-          </select>
-        )}
+        {/* 🔍 SEARCH INPUT */}
+        <div className="relative mb-4">
+          <div className="relative">
+            <FaSearch
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              size={14}
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() =>
+                cityOptions.length > 0 && setShowSearchResults(true)
+              }
+              placeholder="Cari kota (min. 2 huruf)..."
+              className="w-full pl-10 pr-10 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#F472B6]/50 focus:border-[#F472B6] transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setShowSearchResults(false);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+              >
+                <FaTimes size={12} />
+              </button>
+            )}
+          </div>
 
-        {/* STRIPED TABLE */}
-        <table className="w-full text-sm overflow-hidden rounded-xl">
-          <tbody>
-            {prayers.map(([name, time], i) => {
-              const isNext = nextPrayer?.name === name;
-              return (
-                <tr
-                  key={name}
-                  className={`
-                    ${i % 2 === 0 ? "bg-slate-800/40" : "bg-slate-900"} {isNext ? "bg-[#6D1E3A]" : ""}
-                  `}
-                >
-                  <td
-                    className={`px-4 py-3 text-zinc-300 ${isNext ? "bg-[#6D1E3A]" : ""}`}
-                  >
-                    {name}
-                    {/* {isNext && (
-                      <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-[#F472B6] text-white">
-                        Selanjutnya
-                      </span>
-                    )} */}
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-right font-mono text-zinc-200 ${isNext ? "bg-[#6D1E3A]" : ""}`}
-                  >
-                    {time}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+          {/* SEARCH RESULTS DROPDOWN */}
+          {showSearchResults &&
+            (searchQuery.length >= 2 || cityOptions.length === 0) && (
+              <div className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                {isSearching ? (
+                  <div className="p-3 text-center text-slate-400 text-sm">
+                    <FaSpinner className="animate-spin inline mr-2" size={12} />
+                    Mencari...
+                  </div>
+                ) : filteredCities.length > 0 ? (
+                  filteredCities.map((city) => (
+                    <button
+                      key={city.id}
+                      onClick={() => handleCitySelect(city)}
+                      className="w-full px-4 py-3 text-left hover:bg-slate-700/50 transition flex items-center justify-between border-b border-slate-700/50 last:border-0"
+                    >
+                      <div>
+                        <p className="text-sm text-white font-medium">
+                          {city.lokasi}
+                        </p>
+                        {city.daerah && (
+                          <p className="text-xs text-slate-500">
+                            {city.daerah}
+                          </p>
+                        )}
+                      </div>
+                      {String(selectedCityId) === String(city.id) && (
+                        <span className="text-[#F472B6] text-xs font-medium">
+                          ✓ Terpilih
+                        </span>
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-3 text-center text-slate-400 text-sm">
+                    Tidak ada kota yang cocok
+                  </div>
+                )}
+              </div>
+            )}
+        </div>
 
-        <div className="pt-3 mt-3 border-t border-slate-800 text-[10px] text-zinc-500 text-center">
-          Data oleh MyQuran API • {times?.daerah}
+        {/* Current City Display */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 mb-4">
+          <div className="flex items-center gap-2">
+            <FaMapMarkerAlt className="text-[#F472B6]" size={14} />
+            <span className="text-sm text-white font-medium">
+              {selectedCityName || "Memuat lokasi..."}
+            </span>
+          </div>
+          {selectedCityId && (
+            <span className="text-xs text-slate-500">ID: {selectedCityId}</span>
+          )}
+        </div>
+
+        {/* PRAYER TIMES TABLE */}
+        <div className="overflow-hidden rounded-xl border border-slate-800">
+          <table className="w-full text-sm">
+            <tbody>
+              {prayers.map(([name, time], i) => {
+                const isNext = nextPrayer?.name === name;
+                return (
+                  <tr
+                    key={name}
+                    className={`
+                      border-b border-slate-800/50 last:border-0
+                      ${isNext ? "bg-[#6D1E3A]/20" : i % 2 === 0 ? "bg-slate-800/40" : "bg-slate-900"}
+                    `}
+                  >
+                    <td
+                      className={`px-4 py-3 flex items-center gap-2 ${isNext ? "text-white font-semibold" : "text-zinc-300"}`}
+                    >
+                      {name}
+                      {isNext && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#F472B6] text-white font-bold animate-pulse">
+                          NEXT
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className={`px-4 py-3 text-right font-mono ${isNext ? "text-[#F472B6] font-bold" : "text-zinc-200"}`}
+                    >
+                      {time}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="pt-3 mt-3 border-t border-slate-800 text-[10px] text-zinc-500 text-center flex justify-between items-center">
+          <span>Data oleh MyQuran API</span>
+          <span>{times?.daerah}</span>
         </div>
       </div>
     </>
