@@ -1,96 +1,72 @@
 // public/sw.js
 
-self.addEventListener("install", (event) => {
-    console.log("Service Worker installing...");
-    self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-    console.log("Service Worker activated");
-    event.waitUntil(clients.claim());
-});
-
-// Prayer times storage
-let prayerTimes = {};
-
-// Listen for messages from main app
+// Simpan jadwal di IndexedDB atau cache
 self.addEventListener("message", (event) => {
     if (event.data.type === "SET_PRAYER_TIMES") {
-        prayerTimes = event.data.prayerTimes;
-        scheduleNotifications(prayerTimes);
+        self.prayerSchedule = event.data.payload;
+        schedulePrayerNotifications(self.prayerSchedule);
     }
 });
 
-// Schedule notifications for all prayers
-function scheduleNotifications(times) {
+function schedulePrayerNotifications(schedule) {
+    if (!schedule?.jadwal) return;
+
     const prayers = [
-        { name: "Subuh", time: times.Fajr },
-        { name: "Dzuhur", time: times.Dhuhr },
-        { name: "Ashar", time: times.Asr },
-        { name: "Maghrib", time: times.Maghrib },
-        { name: "Isya", time: times.Isha },
+        { name: "Subuh", key: "subuh" },
+        { name: "Dzuhur", key: "dzuhur" },
+        { name: "Ashar", key: "ashar" },
+        { name: "Maghrib", key: "maghrib" },
+        { name: "Isya", key: "isya" },
     ];
 
-    prayers.forEach((prayer) => {
-        schedulePrayerNotification(prayer.name, prayer.time);
+    prayers.forEach(({ name, key }) => {
+        if (schedule.jadwal[key]) {
+            scheduleNotificationInSW(name, schedule.jadwal[key]);
+        }
     });
 }
 
-// Schedule single prayer notification
-function schedulePrayerNotification(prayerName, prayerTime) {
-    const [hours, minutes] = prayerTime.split(":");
+function scheduleNotificationInSW(prayerName, timeStr) {
+    const [hours, minutes] = timeStr.split(":").map(Number);
     const now = new Date();
-    const prayerDate = new Date();
-    prayerDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    const prayerTime = new Date(now);
+    prayerTime.setHours(hours, minutes, 0, 0);
 
-    if (prayerDate < now) {
-        prayerDate.setDate(prayerDate.getDate() + 1);
+    if (prayerTime <= now) {
+        prayerTime.setDate(prayerTime.getDate() + 1);
     }
 
-    const delay = prayerDate.getTime() - now.getTime();
+    const delay = prayerTime.getTime() - now.getTime();
 
-    setTimeout(() => {
-        showNotification(prayerName);
-        // Reschedule for next day
-        schedulePrayerNotification(prayerName, prayerTime);
-    }, delay);
+    // ⚠️ setTimeout di SW juga tidak 100% reliable (SW bisa dimatikan OS)
+    // Gunakan Background Sync API jika tersedia
+    if ("BackgroundSyncManager" in self.registration) {
+        self.registration.sync.register(`prayer-${prayerName}`);
+    } else {
+        // Fallback: setTimeout (tidak reliable tapi better than nothing)
+        setTimeout(() => {
+            showPrayerNotificationInSW(prayerName);
+            // Reschedule untuk besok
+            scheduleNotificationInSW(prayerName, timeStr);
+        }, delay);
+    }
 }
 
-// Show notification
-function showNotification(prayerName) {
+function showPrayerNotificationInSW(prayerName) {
     self.registration.showNotification(`Waktu Sholat ${prayerName}`, {
-        body: `Sudah masuk waktu sholat ${prayerName}. Segeralah melaksanakan sholat.`,
+        body: `Sudah masuk waktu sholat ${prayerName}.`,
         icon: "/icon-192x192.png",
         badge: "/badge-72x72.png",
         vibrate: [200, 100, 200, 100, 200],
-        requireInteraction: true,
-        actions: [
-            { action: "snooze", title: "Snooze 5 menit" },
-            { action: "dismiss", title: "Tutup" },
-        ],
         tag: `prayer-${prayerName}`,
-        renotify: true,
+        // ❌ TIDAK BISA mainkan audio di sini
     });
 }
 
-// Handle notification click
-self.addEventListener("notificationclick", (event) => {
-    event.notification.close();
-
-    if (event.action === "snooze") {
-        // Snooze for 5 minutes
-        setTimeout(() => {
-            showNotification(event.notification.title.replace("Waktu Sholat ", ""));
-        }, 5 * 60 * 1000);
-    } else {
-        // Open app
-        event.waitUntil(
-            clients.matchAll({ type: "window" }).then((clientList) => {
-                if (clientList.length > 0) {
-                    return clientList[0].focus();
-                }
-                return clients.openWindow("/");
-            })
-        );
+// Handle background sync
+self.addEventListener("sync", (event) => {
+    if (event.tag.startsWith("prayer-")) {
+        const prayerName = event.tag.replace("prayer-", "");
+        showPrayerNotificationInSW(prayerName);
     }
 });

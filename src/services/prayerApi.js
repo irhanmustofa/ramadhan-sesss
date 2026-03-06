@@ -25,13 +25,6 @@ export async function getCityNameFromCoords(lat, lng) {
         const data = await res.json();
         const address = data.address || {};
 
-        console.log("🗺️ Reverse geocoding data:", {
-            city: address.city,
-            town: address.town,
-            regency: address.regency,
-            county: address.county,
-            state: address.state
-        });
 
         // ✅ FIX: Prioritas lokasi + fallback lengkap
         const location =
@@ -50,7 +43,6 @@ export async function getCityNameFromCoords(lat, lng) {
             .replace(/\s+/g, ' ')
             .trim();
 
-        console.log(`📍 Detected: "${location}" → cleaned: "${cleanName}"`);
         return cleanName;
 
     } catch (error) {
@@ -75,7 +67,6 @@ export async function searchCityInMyQuran(cityName) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
-        console.log(`🔍 Search "${cityName}" result:`, data);
 
         return data.data || [];
 
@@ -99,7 +90,6 @@ export async function getPrayerTimes(cityId, date = new Date()) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
-        console.log(`📅 Jadwal untuk ${cityId} pada ${formattedDate}:`, data)
 
         return data.data || null  // ✅ FIX: Return null jika tidak ada data
     } catch (error) {

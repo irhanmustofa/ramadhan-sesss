@@ -168,11 +168,15 @@ export default function Setting() {
 
   const setDefaultCity = useCallback(async () => {
     try {
-      const prayerData = await fetchPrayerTimesAPI("1203", new Date());
+      const appLocation = localStorage.getItem("app_location");
+      const prayerData = await fetchPrayerTimesAPI(
+        appLocation.cityId,
+        new Date(),
+      );
       if (prayerData?.jadwal) {
         setTimes(prayerData);
-        setSelectedCityId("1203");
-        setSelectedCityName("JAKARTA PUSAT");
+        setSelectedCityId(String(appLocation.cityId));
+        setSelectedCityName(appLocation.kota);
       }
     } catch (e) {
       console.error("Fallback failed:", e);
@@ -220,23 +224,6 @@ export default function Setting() {
           error={error}
         />
 
-        {/* Method Selector (Simple) */}
-        <div className="bg-slate-900/80 rounded-2xl p-4 border border-slate-800">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <FaCog className="text-emerald-400" size={16} />
-              <span className="text-[10px] text-slate-500 uppercase tracking-wide">
-                METODE
-              </span>
-            </div>
-            <button className="text-slate-500 hover:text-white transition">
-              <FaChevronRight className="rotate-90" size={14} />
-            </button>
-          </div>
-          <p className="text-sm font-semibold text-white">{method}</p>
-        </div>
-
-        {/* Notification Settings (Extracted Component) */}
         <NotificationSettings prayerTimes={times} cityId={selectedCityId} />
       </main>
     </div>

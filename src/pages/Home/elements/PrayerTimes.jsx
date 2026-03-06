@@ -111,8 +111,6 @@ export default function PrayerTimes() {
           const savedData = JSON.parse(saved);
 
           if (savedData?.cityId && savedData?.kota) {
-            console.log("✅ Loading from localStorage:", savedData);
-
             const prayerData = await getPrayerTimes(
               savedData.cityId,
               new Date(),
@@ -204,8 +202,6 @@ export default function PrayerTimes() {
         }),
       );
 
-      console.log("✅ City changed to:", city.lokasi);
-
       // Auto reload after 100ms
       setTimeout(() => {
         window.location.reload();
@@ -236,14 +232,12 @@ export default function PrayerTimes() {
       });
 
       const { latitude, longitude } = position.coords;
-      console.log("📍 GPS detected:", { latitude, longitude });
 
       // ✅ STEP 2: Get city name from coords
       const cityName = await getCityNameFromCoords(latitude, longitude);
       if (!cityName) {
         throw new Error("Gagal mendapatkan nama kota dari koordinat");
       }
-      console.log("🏙️ City name:", cityName);
 
       // ✅ STEP 3: Search city in MyQuran database
       const cityList = await searchCityInMyQuran(cityName);
@@ -255,7 +249,6 @@ export default function PrayerTimes() {
       const selectedCity = cityList[0];
       const cityId = selectedCity.id;
       const kota = selectedCity.lokasi;
-      console.log("✅ City matched:", { cityId, kota });
 
       // ✅ STEP 4: Fetch prayer times for detected city
       const prayerData = await getPrayerTimes(cityId, new Date());
@@ -279,7 +272,6 @@ export default function PrayerTimes() {
           lastUpdated: new Date().toISOString(),
         }),
       );
-      console.log("💾 localStorage updated:", { cityId, kota });
 
       // ✅ STEP 7: Reload halaman agar data fresh
       setTimeout(() => {
@@ -301,7 +293,6 @@ export default function PrayerTimes() {
   const setDefaultCity = useCallback(async () => {
     try {
       const cityId = localStorage.getItem("prayer_location");
-      console.log("👀 Fallback to default:", cityId);
       const prayerData = await getPrayerTimes("1203", new Date()); // Jakarta
       if (prayerData?.jadwal) {
         setTimes(prayerData);
@@ -451,85 +442,6 @@ export default function PrayerTimes() {
               <span>{times?.jadwal?.tanggal}</span>
             </div>
           </div>
-          <button
-            onClick={handleResetLocation}
-            className="text-xs text-zinc-500 hover:text-white p-1"
-            title="Reset lokasi"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* 🔍 SEARCH INPUT */}
-        <div className="relative mb-4">
-          <div className="relative">
-            <FaSearch
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-              size={14}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() =>
-                cityOptions.length > 0 && setShowSearchResults(true)
-              }
-              placeholder="Cari kota (min. 2 huruf)..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#F472B6]/50 focus:border-[#F472B6] transition"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setShowSearchResults(false);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
-              >
-                <FaTimes size={12} />
-              </button>
-            )}
-          </div>
-
-          {/* SEARCH RESULTS DROPDOWN */}
-          {showSearchResults &&
-            (searchQuery.length >= 2 || cityOptions.length === 0) && (
-              <div className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-64 overflow-y-auto">
-                {isSearching ? (
-                  <div className="p-3 text-center text-slate-400 text-sm">
-                    <FaSpinner className="animate-spin inline mr-2" size={12} />
-                    Mencari...
-                  </div>
-                ) : filteredCities.length > 0 ? (
-                  filteredCities.map((city) => (
-                    <button
-                      key={city.id}
-                      onClick={() => handleCitySelect(city)}
-                      className="w-full px-4 py-3 text-left hover:bg-slate-700/50 transition flex items-center justify-between border-b border-slate-700/50 last:border-0"
-                    >
-                      <div>
-                        <p className="text-sm text-white font-medium">
-                          {city.lokasi}
-                        </p>
-                        {city.daerah && (
-                          <p className="text-xs text-slate-500">
-                            {city.daerah}
-                          </p>
-                        )}
-                      </div>
-                      {String(selectedCityId) === String(city.id) && (
-                        <span className="text-[#F472B6] text-xs font-medium">
-                          ✓ Terpilih
-                        </span>
-                      )}
-                    </button>
-                  ))
-                ) : (
-                  <div className="p-3 text-center text-slate-400 text-sm">
-                    Tidak ada kota yang cocok
-                  </div>
-                )}
-              </div>
-            )}
         </div>
 
         {/* Current City Display */}
